@@ -1,0 +1,4 @@
+project_id = "campus-takeout"
+
+[functions.send-sms-hook]
+verify_jwt = false

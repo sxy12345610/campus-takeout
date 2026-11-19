@@ -55,11 +55,16 @@
         try { data = JSON.parse(text || '{}'); } catch (e) {}
         writeJson(LAST_KEY, { at: Date.now() });
         if (res.ok) return { ok: true, demo: false };
-        return demoSend(phone);
+        var code = String(data.error_code || '');
+        var msg = String(errText(data, res.status));
+        var unconfigured = /phone_provider_disabled|phone_provider_not_enabled|signups_disabled|unsupported_phone/i.test(code) ||
+          /phone[\s\S]*(disabled|not enabled|not supported)|sms provider/i.test(msg);
+        if (unconfigured) return demoSend(phone);
+        return { ok: false, error: '短信发送失败：' + msg };
       });
     }).catch(function () {
       writeJson(LAST_KEY, { at: Date.now() });
-      return demoSend(phone);
+      return { ok: false, error: '网络异常，短信发送失败' };
     });
   }
 
