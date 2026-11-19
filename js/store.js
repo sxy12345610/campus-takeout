@@ -239,6 +239,27 @@
     getUsers: function () { return read(K.USERS, []); },
     setUsers: function (v) { return write(K.USERS, v); },
 
+    /* ---- 当前登录用户的数据（按用户隔离） ---- */
+    currentUserId: function () {
+      var s = this.getSession();
+      return s && s.id ? s.id : '';
+    },
+    myOrders: function () {
+      var uid = this.currentUserId();
+      if (!uid) return [];
+      return this.getOrders().filter(function (o) { return o.userId === uid; });
+    },
+    myCoupons: function () {
+      var uid = this.currentUserId();
+      if (!uid) return [];
+      return this.getCoupons().filter(function (c) { return c.userId === uid; });
+    },
+    myReviews: function () {
+      var uid = this.currentUserId();
+      if (!uid) return [];
+      return this.getReviews().filter(function (r) { return r.userId === uid; });
+    },
+
     /* ---- 登录会话（仅保存在本机，不参与云同步） ---- */
     getSession: function () { return read(K.SESSION, null); },
     login: function (name, phone) {
@@ -345,6 +366,7 @@
       var orders = this.getOrders();
       var order = {
         id: 'o' + Date.now(), no: orderNo(), status: 'pending', createdAt: nowText(0),
+        userId: payload.userId || this.currentUserId(),
         shopId: payload.shopId, shopName: payload.shopName, shopEmoji: payload.shopEmoji,
         items: payload.items, goodsTotal: payload.goodsTotal, deliveryFee: payload.deliveryFee,
         couponAmount: payload.couponAmount, total: payload.total,
@@ -395,7 +417,13 @@
     },
     submitReview: function (id, rating, text, images) {
       var reviews = this.getReviews();
-      reviews.unshift({ id: 'r' + Date.now(), orderId: id, rating: rating, text: text, images: images || [], time: nowText(0) });
+      var o = this.findOrder(id);
+      var s = this.getSession();
+      reviews.unshift({
+        id: 'r' + Date.now(), orderId: id,
+        userId: s ? s.id : '', shopId: o ? o.shopId : '', shopName: o ? o.shopName : '',
+        rating: rating, text: text, images: images || [], time: nowText(0),
+      });
       this.setReviews(reviews); emit();
       return this.updateOrder(id, { reviewed: true });
     },

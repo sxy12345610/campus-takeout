@@ -174,7 +174,7 @@
     }
     if (m.name === 'coupon') {
       var sum = S.cartSummary();
-      var list = S.getCoupons().filter(function (c) { return !c.used && sum.total >= c.threshold; });
+      var list = S.myCoupons().filter(function (c) { return !c.used && sum.total >= c.threshold; });
       var body = '<div class="modal-title">选择优惠券</div>';
       body += '<div class="card tight" data-action="pick-coupon" data-id="" style="cursor:pointer"><div class="between"><span class="small">不使用优惠券</span>' +
         (ui.couponId ? '<span class="tiny muted">切换</span>' : '<span class="tag">当前</span>') + '</div></div>';
@@ -340,7 +340,7 @@
         if (!sum.count) { toast('购物车是空的'); return; }
         var shop = S.getShop(sum.shopId) || S.getCurrentShop();
         var addr = S.getAddresses().find(function (a) { return a.isDefault; }) || S.getAddresses()[0];
-        var coupons = S.getCoupons().filter(function (c) { return !c.used && sum.total >= c.threshold; });
+        var coupons = S.myCoupons().filter(function (c) { return !c.used && sum.total >= c.threshold; });
         var chosen = App.ui.couponId ? coupons.find(function (c) { return c.id === App.ui.couponId; }) : null;
         var off = chosen ? chosen.amount : 0;
         var fee = shop ? shop.deliveryFee : 0;

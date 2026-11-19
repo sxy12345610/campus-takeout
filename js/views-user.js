@@ -144,7 +144,7 @@
     if (!sum.count) return U.page('确认订单', U.empty('🛒', '没有可结算的商品') + '<div class="btn btn-block" data-action="go" data-href="#/user/shops">去点餐</div>', { back: true });
     var shop = S.getShop(sum.shopId) || S.getCurrentShop();
     var addr = S.getAddresses().find(function (a) { return a.isDefault; }) || S.getAddresses()[0];
-    var coupons = S.getCoupons().filter(function (c) { return !c.used && sum.total >= c.threshold; });
+    var coupons = S.myCoupons().filter(function (c) { return !c.used && sum.total >= c.threshold; });
     var chosen = p.ui.couponId ? coupons.find(function (c) { return c.id === p.ui.couponId; }) : null;
     var couponAmount = chosen ? chosen.amount : 0;
     var fee = shop ? shop.deliveryFee : 0;
@@ -175,7 +175,7 @@
   /* ---------------- 订单列表 ---------------- */
   V.orders = function (p) {
     var tab = p.ui.ordersTab || '全部';
-    var all = S.getOrders();
+    var all = S.myOrders();
     var ongoing = ['pending', 'accepted', 'ready', 'delivering'];
     var list = tab === '进行中' ? all.filter(function (o) { return ongoing.indexOf(o.status) >= 0; })
       : tab === '已完成' ? all.filter(function (o) { return ongoing.indexOf(o.status) < 0; }) : all;
@@ -261,8 +261,9 @@
 
   /* ---------------- 我的 ---------------- */
   V.profile = function (p) {
-    var orders = S.getOrders(), coupons = S.getCoupons().filter(function (c) { return !c.used; });
-    var spent = orders.reduce(function (s, o) { return s + (o.total || 0); }, 0);
+    var orders = S.myOrders(), coupons = S.myCoupons().filter(function (c) { return !c.used; });
+    var valid = orders.filter(function (o) { return o.status !== 'rejected' && o.status !== 'refunded'; });
+    var spent = valid.reduce(function (s, o) { return s + (o.total || 0); }, 0);
     var phone = S.getMerchantPhone();
     var session = S.getSession() || { name: '同学' };
     var h = '';
@@ -270,10 +271,10 @@
       '<span class="hero-edit" data-action="go" data-href="#/user/account">修改昵称</span></div>' +
       '<div class="hero-sub">欢迎回来，享受美味时光</div></div>';
     h += '<div class="stat-grid" style="margin-bottom:12px">' +
-      '<div class="stat-box"><div class="sb-val">' + orders.length + '</div><div class="sb-label">我的订单</div></div>' +
-      '<div class="stat-box"><div class="sb-val">' + coupons.length + '</div><div class="sb-label">可用优惠券</div></div>' +
-      '<div class="stat-box"><div class="sb-val">' + U.money(spent) + '</div><div class="sb-label">累计消费</div></div>' +
-      '<div class="stat-box"><div class="sb-val">' + S.getReviews().length + '</div><div class="sb-label">我的评价</div></div></div>';
+      '<div class="stat-box" data-action="go" data-href="#/user/orders"><div class="sb-val">' + orders.length + '</div><div class="sb-label">我的订单</div></div>' +
+      '<div class="stat-box" data-action="go" data-href="#/user/coupons"><div class="sb-val">' + coupons.length + '</div><div class="sb-label">可用优惠券</div></div>' +
+      '<div class="stat-box" data-action="go" data-href="#/user/spending"><div class="sb-val">' + U.money(spent) + '</div><div class="sb-label">累计消费</div></div>' +
+      '<div class="stat-box" data-action="go" data-href="#/user/reviews"><div class="sb-val">' + S.myReviews().length + '</div><div class="sb-label">我的评价</div></div></div>';
     h += '<div class="card">' +
       '<div class="list-row" data-action="go" data-href="#/user/account"><span class="lr-icon">👤</span><span class="flex1">个人资料 / 修改昵称</span><span class="tiny muted">' + E(session.name) + '</span><span class="arrow">›</span></div>' +
       '<div class="list-row" data-action="go" data-href="#/user/address"><span class="lr-icon">📍</span><span class="flex1">我的收货地址</span><span class="arrow">›</span></div>' +
@@ -353,7 +354,7 @@
 
   /* ---------------- 优惠券 ---------------- */
   V.coupons = function (p) {
-    var list = S.getCoupons();
+    var list = S.myCoupons();
     var h = '';
     ['未使用', '已使用'].forEach(function (label) {
       var arr = list.filter(function (c) { return label === '未使用' ? !c.used : c.used; });
@@ -384,6 +385,56 @@
     }).join('') + '</div>';
     h += '<div class="notice-bar">当前位置：' + E(loc.name) + ' — ' + E(loc.detail) + '（不会自动获取 GPS）</div>';
     return U.page('设置位置', h, { back: true });
+  };
+
+  /* ---------------- 消费明细 ---------------- */
+  V.spending = function (p) {
+    var all = S.myOrders();
+    var valid = all.filter(function (o) { return o.status !== 'rejected' && o.status !== 'refunded'; });
+    var spent = valid.reduce(function (s, o) { return s + (o.total || 0); }, 0);
+    var avg = valid.length ? Math.round(spent / valid.length) : 0;
+    var h = '<div class="stat-grid" style="margin-bottom:12px">' +
+      '<div class="stat-box hl"><div class="sb-val">' + U.money(spent) + '</div><div class="sb-label">累计消费</div></div>' +
+      '<div class="stat-box"><div class="sb-val">' + valid.length + '</div><div class="sb-label">消费订单</div></div>' +
+      '<div class="stat-box"><div class="sb-val">' + U.money(avg) + '</div><div class="sb-label">平均客单价</div></div>' +
+      '<div class="stat-box"><div class="sb-val">' + all.length + '</div><div class="sb-label">全部订单</div></div></div>';
+    h += '<div class="section-head">消费记录</div>';
+    if (!valid.length) {
+      h += U.empty('💰', '还没有消费记录') + '<div class="btn btn-block" data-action="go" data-href="#/user/shops">去点餐</div>';
+    } else {
+      h += valid.map(function (o) {
+        return '<div class="card" data-action="go" data-href="#/user/detail?id=' + E(o.id) + '" style="cursor:pointer">' +
+          '<div class="between"><div><div class="bold">' + E(o.shopEmoji || '🍽️') + ' ' + E(o.shopName) + '</div>' +
+          '<div class="tiny muted" style="margin-top:3px">' + E(o.createdAt) + ' · ' + E(o.no) + '</div></div>' +
+          '<div style="text-align:right"><div class="price">' + U.money(o.total) + '</div>' +
+          '<div style="margin-top:4px">' + U.statusTag(o.status) + '</div></div></div></div>';
+      }).join('');
+    }
+    return U.page('消费明细', h, { back: true });
+  };
+
+  /* ---------------- 我的评价 ---------------- */
+  V.reviews = function (p) {
+    var list = S.myReviews();
+    var avg = list.length ? (list.reduce(function (s, r) { return s + (r.rating || 0); }, 0) / list.length).toFixed(1) : '0.0';
+    var h = '<div class="stat-grid" style="margin-bottom:12px">' +
+      '<div class="stat-box hl"><div class="sb-val">' + list.length + '</div><div class="sb-label">评价总数</div></div>' +
+      '<div class="stat-box"><div class="sb-val">' + avg + '</div><div class="sb-label">平均评分</div></div></div>';
+    if (!list.length) {
+      h += U.empty('✍️', '还没有发表过评价');
+      h += '<div class="btn btn-block" data-action="go" data-href="#/user/orders">去订单页评价</div>';
+    } else {
+      h += list.map(function (r) {
+        var order = S.findOrder(r.orderId);
+        return '<div class="card"><div class="between"><div class="bold">' + E(r.shopName || (order ? order.shopName : '店铺')) + '</div>' +
+          '<span class="tiny muted">' + E(r.time) + '</span></div>' +
+          '<div style="margin:6px 0;color:#f5a623;font-size:14px">' + '⭐'.repeat(r.rating || 0) + '</div>' +
+          '<div class="small">' + E(r.text || '（仅晒图）') + '</div>' + U.reviewImgs(r.images) +
+          (order ? '<div class="oc-actions" style="margin-top:8px"><div class="btn btn-ghost btn-sm" data-action="go" data-href="#/user/detail?id=' + E(order.id) + '">查看订单</div></div>' : '') +
+          '</div>';
+      }).join('');
+    }
+    return U.page('我的评价', h, { back: true });
   };
 
   window.Views.user = V;
