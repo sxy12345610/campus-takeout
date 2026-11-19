@@ -523,7 +523,7 @@
     var orders = S.getRealOrders(), users = S.getRealUsers(), merchants = S.getMerchants();
     var pending = merchants.filter(function (m) { return m.status === 'pending'; });
     var gmv = orders.reduce(function (s, o) { return s + (o.status === 'rejected' || o.status === 'refunded' ? 0 : o.total); }, 0);
-    var realNames = merchants.filter(function (m) { return m.real && m.status === 'approved'; })
+    var realNames = S.getRealMerchants().filter(function (m) { return m.status === 'approved'; })
       .map(function (m) { return m.name; });
     var shops = S.getShops().filter(function (s) { return s.status === 'open' && realNames.indexOf(s.name) >= 0; });
     var h = '';
