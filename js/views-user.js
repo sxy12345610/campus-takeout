@@ -402,7 +402,8 @@
         '<div class="tiny muted login-tip">登录后可在「我的 → 个人资料」随时修改昵称</div>' +
         '</div>' +
         '<div class="login-foot">同一链接多人使用，云端数据实时同步<br>' +
-        '<span class="link" data-action="go" data-href="#/merchant/login">商家登录</span> · <span class="link" data-action="go" data-href="#/admin/login">管理后台</span></div>' +
+        '<span class="link" data-action="go" data-href="#/merchant/login">商家登录</span> · <span class="link" data-action="go" data-href="#/admin/login">管理后台</span><br>' +
+        '<span style="opacity:.7">v2026.11.19 云端版</span></div>' +
         '</div>';
       return U.page('登录', h, {});
     }
