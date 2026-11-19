@@ -84,7 +84,7 @@
   function renderTabbar(role, active) {
     if (!active) { tabbar.style.display = 'none'; tabbar.innerHTML = ''; return; }
     tabbar.style.display = 'flex';
-    var pending = S.getOrders().filter(function (o) { return o.status === 'pending'; }).length;
+    var pending = S.myOrders().filter(function (o) { return o.status === 'pending'; }).length;
     var cartCount = S.cartSummary().count;
     tabbar.innerHTML = (TABS[role] || []).map(function (t) {
       var badge = (t.key === 'orders' && role === 'merchant' && pending) ? pending
@@ -465,17 +465,74 @@
       }
       case 'refund-order': S.updateOrder(id, { status: 'refunded' }); toast('已退款'); render(false); break;
 
-      /* 登录 / 个人资料 */
-      case 'login': {
-        var nm = (App.ui.loginName || '').trim();
-        var ph = (App.ui.loginPhone || '').trim();
-        if (!nm) { toast('请输入昵称'); return; }
-        if (nm.length > 12) { toast('昵称最多 12 个字'); return; }
-        if (ph && !/^1\d{10}$/.test(ph)) { toast('手机号需为 11 位数字'); return; }
-        S.login(nm, ph);
-        App.ui.loginName = ''; App.ui.loginPhone = '';
-        toast('欢迎，' + nm);
+      /* 登录 / 注册 / 个人资料 */
+      case 'send-code': {
+        var sp = (App.ui.loginPhone || '').trim();
+        if (!/^1\d{10}$/.test(sp)) { toast('请输入正确的 11 位手机号'); return; }
+        if (App.ui.codeSending) return;
+        App.ui.codeSending = true;
+        App.ui.codeHint = '正在发送验证码…';
+        render(false);
+        window.Auth.sendCode(sp).then(function (r) {
+          App.ui.codeSending = false;
+          if (!r.ok) { App.ui.codeHint = r.error; toast(r.error); render(false); return; }
+          if (r.demo) {
+            App.ui.codeHint = '短信通道未开通，本次演示验证码：' + r.code + '（5 分钟内有效）';
+            toast('演示验证码：' + r.code);
+          } else {
+            App.ui.codeHint = '验证码已发送至 +86 ' + sp + '，5 分钟内有效';
+            toast('验证码已发送');
+          }
+          render(false);
+        }).catch(function () {
+          App.ui.codeSending = false;
+          App.ui.codeHint = '发送失败，请稍后重试';
+          toast('发送失败，请稍后重试');
+          render(false);
+        });
+        break;
+      }
+      case 'auth-pass-login': {
+        var lp = (App.ui.loginPhone || '').trim(), pw = App.ui.loginPass || '';
+        if (!/^1\d{10}$/.test(lp)) { toast('请输入正确的 11 位手机号'); return; }
+        if (pw.length < 6) { toast('密码至少 6 位'); return; }
+        var lr = S.loginWithPassword(lp, pw);
+        if (!lr.ok) { toast(lr.error); return; }
+        App.ui.loginPass = ''; App.ui.codeHint = '';
+        toast('欢迎回来，' + lr.session.name);
         navigate('#/user/shops'); break;
+      }
+      case 'auth-register': {
+        var rp = (App.ui.loginPhone || '').trim();
+        var rn = (App.ui.loginRegName || '').trim();
+        var rw = App.ui.loginRegPass || '';
+        var rw2 = App.ui.loginRegPass2 || '';
+        if (!/^1\d{10}$/.test(rp)) { toast('请输入正确的 11 位手机号'); return; }
+        if (!rn) { toast('请填写昵称'); return; }
+        if (rn.length > 12) { toast('昵称最多 12 个字'); return; }
+        if (rw.length < 6) { toast('密码至少 6 位'); return; }
+        if (rw !== rw2) { toast('两次输入的密码不一致'); return; }
+        var rr = S.registerAccount(rp, rw, rn);
+        if (!rr.ok) { toast(rr.error); return; }
+        App.ui.loginRegPass = ''; App.ui.loginRegPass2 = ''; App.ui.loginPass = '';
+        toast('注册成功，已自动登录');
+        navigate('#/user/shops'); break;
+      }
+      case 'auth-code-login': {
+        var cp = (App.ui.loginPhone || '').trim();
+        var cc = (App.ui.loginCode || '').trim();
+        if (!/^1\d{10}$/.test(cp)) { toast('请输入正确的 11 位手机号'); return; }
+        if (!/^\d{6}$/.test(cc)) { toast('请输入 6 位短信验证码'); return; }
+        toast('正在验证…');
+        window.Auth.verifyCode(cp, cc).then(function (r) {
+          if (!r.ok) { toast(r.error); return; }
+          var cr = S.loginWithPhone(cp);
+          if (!cr.ok) { toast(cr.error); return; }
+          App.ui.loginCode = ''; App.ui.codeHint = '';
+          toast('登录成功');
+          navigate('#/user/shops');
+        }).catch(function () { toast('验证失败，请稍后重试'); });
+        break;
       }
       case 'save-nickname': {
         var nn = (App.ui.nickName || '').trim();
@@ -487,7 +544,7 @@
         back(); break;
       }
       case 'logout':
-        confirmModal('退出登录', '退出后需要重新输入昵称才能进入', function () {
+        confirmModal('退出登录', '退出后需要重新用手机号登录才能进入', function () {
           S.clearSession();
           navigate('#/login');
         });

@@ -65,7 +65,7 @@
   };
 
   M.home = function (p) {
-    var orders = S.getRealOrders();
+    var orders = S.myOrders();
     var shop = S.getShop('s1') || {};
     var dishes = S.getDishesByShop('s1');
     var cats = S.getShopCategories('s1');
@@ -161,7 +161,7 @@
 
   M.orders = function (p) {
     var tab = p.ui.mOrdersTab || '待接单';
-    var all = S.getRealOrders();
+    var all = S.myOrders();
     var valid = all.filter(function (o) { return !notCounted(o); });
     var revenue = sumTotal(valid);
     var pending = all.filter(function (o) { return o.status === 'pending'; }).length;
@@ -224,7 +224,7 @@
 
   M.stats = function (p) {
     var period = p.ui.mStatsPeriod || '今日';
-    var orders = S.getRealOrders();
+    var orders = S.myOrders();
     var valid = orders.filter(function (o) { return !notCounted(o); });
     var now = new Date();
     function pad2(n) { return n < 10 ? '0' + n : '' + n; }
@@ -246,7 +246,9 @@
     });
     var revenue = sumTotal(scoped);
     var orderCount = scoped.length;
-    var reviews = S.getReviews().filter(function (r) { return !!r.userId; });
+    var mine = {};
+    orders.forEach(function (o) { mine[o.id] = 1; });
+    var reviews = S.getReviews().filter(function (r) { return !!mine[r.orderId]; });
     var goodRate = reviews.length ? Math.round(reviews.filter(function (r) { return r.rating >= 4; }).length / reviews.length * 100) : 0;
 
     var h = U.seg([{ value: '今日', label: '今日' }, { value: '近7天', label: '近 7 天' }, { value: '近30天', label: '近 30 天' }], period, 'mStatsPeriod');
@@ -369,7 +371,7 @@
   M.shop = function (p) {
     var shop = S.getShop('s1') || {};
     var my = S.getMyMerchant();
-    var orders = S.getRealOrders();
+    var orders = S.myOrders();
     var valid = orders.filter(function (o) { return !notCounted(o); });
     var dishes = S.getDishesByShop('s1');
     var customers = {};
@@ -413,8 +415,9 @@
 
   M.users = function (p) {
     var filter = p.ui.mUserTab || '全部顾客';
-    var orders = S.getRealOrders();
-    var users = S.getRealUsers();
+    var orders = S.myOrders();
+    var me = S.getSession();
+    var users = me ? S.getRealUsers().filter(function (u) { return u.id === me.id; }) : [];
     var map = {};
     orders.forEach(function (o) {
       var key = o.phone || o.receiver;
@@ -520,7 +523,8 @@
 
   /* ==================== 管理后台 ==================== */
   A.home = function (p) {
-    var orders = S.getRealOrders(), users = S.getRealUsers(), merchants = S.getMerchants();
+    var me = S.getSession();
+    var orders = S.myOrders(), users = me ? [me] : [], merchants = S.getMerchants();
     var pending = merchants.filter(function (m) { return m.status === 'pending'; });
     var gmv = orders.reduce(function (s, o) { return s + (o.status === 'rejected' || o.status === 'refunded' ? 0 : o.total); }, 0);
     var realNames = S.getRealMerchants().filter(function (m) { return m.status === 'approved'; })
@@ -575,8 +579,9 @@
   };
 
   A.users = function (p) {
-    var list = S.getRealUsers();
-    var orders = S.getRealOrders();
+    var me = S.getSession();
+    var list = me ? S.getRealUsers().filter(function (u) { return u.id === me.id; }) : [];
+    var orders = S.myOrders();
     var h = '<div class="section-head">平台用户 <span class="sh-more">共 ' + list.length + ' 人</span></div>';
     if (!list.length) h += U.empty('👥', '暂无注册用户，顾客登录后会自动同步');
     h += list.map(function (u) {
@@ -593,7 +598,7 @@
   };
 
   A.orders = function (p) {
-    var list = S.getRealOrders();
+    var list = S.myOrders();
     var h = '<div class="section-head">全部订单 <span class="sh-more">共 ' + list.length + ' 笔</span></div>';
     if (!list.length) h += U.empty('📋', '暂无订单数据，顾客下单后会实时同步');
     h += list.map(function (o) {

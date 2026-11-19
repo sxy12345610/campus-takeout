@@ -453,21 +453,47 @@
 
   window.Views.user = V;
 
-  /* ---------------- 登录页 ---------------- */
+  /* ---------------- 登录页（密码登录 / 验证码登录 / 注册） ---------------- */
   window.Views.login = {
     home: function (p) {
+      var ui = p.ui;
+      var tab = ui.loginTab || '密码登录';
+
+      function field(label, model, placeholder, type, maxlength) {
+        return '<div class="form-field"><label class="form-label">' + label + '</label>' +
+          '<input class="input" type="' + (type || 'text') + '" maxlength="' + (maxlength || 30) + '" data-model="' + model +
+          '" value="' + E(ui[model] || '') + '" placeholder="' + placeholder + '"></div>';
+      }
+
       var h = '<div class="login-wrap">' +
         '<div class="login-logo">🍜</div>' +
         '<div class="login-title">校园外卖</div>' +
-        '<div class="login-sub">足不出校 · 吃遍食堂与周边</div>' +
+        '<div class="login-sub">手机号登录 · 每人独立账号与数据</div>' +
         '<div class="card login-card">' +
-        '<div class="form-field"><label class="form-label">昵称</label>' +
-        '<input class="input" maxlength="12" data-model="loginName" value="' + E(p.ui.loginName || '') + '" placeholder="给自己起个昵称"></div>' +
-        '<div class="form-field"><label class="form-label">手机号（选填）</label>' +
-        '<input class="input" maxlength="11" data-model="loginPhone" value="' + E(p.ui.loginPhone || '') + '" placeholder="用于商家联系你"></div>' +
-        '<div class="btn btn-block" data-action="login">进入校园外卖</div>' +
-        '<div class="tiny muted login-tip">登录后可在「我的 → 个人资料」随时修改昵称</div>' +
-        '</div>' +
+        U.seg([{ value: '密码登录', label: '密码登录' }, { value: '验证码登录', label: '验证码登录' }, { value: '注册', label: '注册' }], tab, 'loginTab');
+      h += '<div style="height:12px"></div>';
+      h += field('手机号', 'loginPhone', '请输入 11 位手机号', 'tel', 11);
+
+      if (tab === '注册') {
+        h += field('昵称', 'loginRegName', '给自己起个昵称', 'text', 12);
+        h += field('设置密码', 'loginRegPass', '至少 6 位', 'password', 20);
+        h += field('确认密码', 'loginRegPass2', '再次输入密码', 'password', 20);
+        h += '<div class="btn btn-block" data-action="auth-register">注册并登录</div>' +
+          '<div class="tiny muted login-tip">注册成功后自动登录，新账号的订单、消费与各端统计均从 0 开始</div>';
+      } else if (tab === '验证码登录') {
+        h += '<div class="form-field"><label class="form-label">短信验证码</label>' +
+          '<div class="row gap8"><input class="input flex1" type="tel" maxlength="6" data-model="loginCode" value="' + E(ui.loginCode || '') + '" placeholder="6 位验证码">' +
+          '<span class="btn btn-sm" data-action="send-code">' + (ui.codeSending ? '发送中…' : '获取验证码') + '</span></div></div>';
+        if (ui.codeHint) h += '<div class="tiny" style="color:var(--primary);margin:-4px 0 10px">' + E(ui.codeHint) + '</div>';
+        h += '<div class="btn btn-block" data-action="auth-code-login">验证码登录</div>' +
+          '<div class="tiny muted login-tip">未注册的手机号验证通过后会自动创建账号</div>';
+      } else {
+        h += field('密码', 'loginPass', '请输入登录密码', 'password', 20);
+        h += '<div class="btn btn-block" data-action="auth-pass-login">登录</div>' +
+          '<div class="tiny muted login-tip">还没有账号？切换到「注册」用手机号创建</div>';
+      }
+
+      h += '</div>' +
         '<div class="login-foot">同一链接多人使用，云端数据实时同步<br>' +
         '<span class="link" data-action="go" data-href="#/merchant/login">商家登录</span> · <span class="link" data-action="go" data-href="#/admin/login">管理后台</span><br>' +
         '<span style="opacity:.7">v2026.11.19 云端版</span></div>' +

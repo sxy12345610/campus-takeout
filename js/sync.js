@@ -37,7 +37,9 @@
         'wk_current_shop': 1,
         'wk_current_location': 1,
         'wk_session': 1,
-        'wk_role_auth': 1
+        'wk_role_auth': 1,
+        'wk_demo_otp': 1,
+        'wk_otp_last': 1
     };
 
     function isSyncedKey(k) {

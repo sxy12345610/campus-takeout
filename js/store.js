@@ -52,6 +52,17 @@
     var d = new Date();
     return '' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + Math.floor(Math.random() * 90 + 10);
   }
+  /* 演示级密码摘要：djb2 + 手机号加盐，仅用于前端演示，不可用于真实生产环境 */
+  function hashPass(phone, pass) {
+    var str = 'campus|' + phone + '|' + pass;
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+    return 'h' + h.toString(36);
+  }
+  function todayText() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
 
   /* ---------------- 种子数据（与小程序一致） ---------------- */
   var SEED_SHOPS = [
@@ -277,27 +288,55 @@
       return this.getReviews().filter(function (r) { return r.userId === uid; });
     },
 
-    /* ---- 登录会话（仅保存在本机，不参与云同步） ---- */
-    getSession: function () { return read(K.SESSION, null); },
-    login: function (name, phone) {
-      var users = this.getUsers();
-      var u = users.find(function (x) {
-        if (phone) return x.phone === phone;
-        return x.phone === '未填写' && x.name === name;
-      });
-      var d = new Date();
-      var today = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-      if (!u) {
-        u = { id: 'u' + Date.now(), name: name, phone: phone || '未填写', orders: 0, spent: 0, status: 'normal', joined: today };
-        users.push(u);
-      } else {
-        u.name = name;
-      }
-      this.setUsers(users);
-      var session = { id: u.id, name: name, phone: u.phone, joined: u.joined, loginAt: Date.now() };
+    /* ---- 账号（手机号 + 密码 / 验证码，账号数据存于云端用户表） ---- */
+    findUserByPhone: function (phone) {
+      return this.getUsers().find(function (u) { return u.phone === phone; }) || null;
+    },
+    _startSession: function (u) {
+      var session = { id: u.id, name: u.name, phone: u.phone, joined: u.joined, loginAt: Date.now() };
       write(K.SESSION, session);
+      emit();
       return session;
     },
+    registerAccount: function (phone, password, name) {
+      var users = this.getUsers();
+      if (users.find(function (u) { return u.phone === phone; })) {
+        return { ok: false, error: '该手机号已注册，请直接登录' };
+      }
+      var u = {
+        id: 'u' + Date.now() + Math.floor(Math.random() * 900 + 100),
+        name: name, phone: phone, orders: 0, spent: 0, status: 'normal',
+        joined: todayText(), passHash: hashPass(phone, password), authProvider: 'password',
+      };
+      users.push(u);
+      this.setUsers(users);
+      return { ok: true, session: this._startSession(u) };
+    },
+    loginWithPassword: function (phone, password) {
+      var u = this.findUserByPhone(phone);
+      if (!u) return { ok: false, error: '该手机号尚未注册' };
+      if (!u.passHash) return { ok: false, error: '该账号未设置密码，请用验证码登录' };
+      if (u.passHash !== hashPass(phone, password)) return { ok: false, error: '密码错误' };
+      if (u.status === 'banned') return { ok: false, error: '该账号已被封禁' };
+      return { ok: true, session: this._startSession(u) };
+    },
+    loginWithPhone: function (phone, name) {
+      var users = this.getUsers();
+      var u = users.find(function (x) { return x.phone === phone; });
+      if (!u) {
+        u = {
+          id: 'u' + Date.now() + Math.floor(Math.random() * 900 + 100),
+          name: name || ('用户' + phone.slice(-4)), phone: phone, orders: 0, spent: 0,
+          status: 'normal', joined: todayText(), authProvider: 'phone',
+        };
+        users.push(u);
+        this.setUsers(users);
+      }
+      if (u.status === 'banned') return { ok: false, error: '该账号已被封禁' };
+      return { ok: true, session: this._startSession(u) };
+    },
+    /* ---- 登录会话（仅保存在本机，不参与云同步） ---- */
+    getSession: function () { return read(K.SESSION, null); },
     updateSessionName: function (name) {
       var s = this.getSession();
       if (!s) return null;
