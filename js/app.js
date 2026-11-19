@@ -601,10 +601,6 @@
   });
 
   /* ---------------- 启动 ---------------- */
-  function tickClock() {
-    var d = new Date();
-    document.getElementById('clock').textContent = (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
-  }
   var syncPending = false;
   window.addEventListener('sync:applied', function () {
     // 正在输入时先不刷新，避免把用户还没保存的内容冲掉
@@ -625,7 +621,6 @@
   S.init();
   if (!location.hash) location.hash = S.getSession() ? '#/user/shops' : '#/login';
   App.currentHash = location.hash;
-  tickClock(); setInterval(tickClock, 30000);
   render(true);
   if (window.Sync) {
     window.Sync.init();
