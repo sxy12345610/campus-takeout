@@ -13,7 +13,7 @@
     ADDRESSES: 'wk_addresses', COUPONS: 'wk_coupons', REVIEWS: 'wk_reviews',
     USERS: 'wk_users', MERCHANTS: 'wk_merchants', SETTINGS: 'wk_settings',
     MARKETING: 'wk_marketing', CURRENT_SHOP: 'wk_current_shop',
-    LOCATION: 'wk_current_location', INIT: 'wk_init_v4',
+    LOCATION: 'wk_current_location', INIT: 'wk_init_v4', SESSION: 'wk_session',
   };
 
   function ls() {
@@ -237,6 +237,41 @@
     setReviews: function (v) { return write(K.REVIEWS, v); },
     getUsers: function () { return read(K.USERS, []); },
     setUsers: function (v) { return write(K.USERS, v); },
+
+    /* ---- 登录会话（仅保存在本机，不参与云同步） ---- */
+    getSession: function () { return read(K.SESSION, null); },
+    login: function (name, phone) {
+      var users = this.getUsers();
+      var u = users.find(function (x) {
+        if (phone) return x.phone === phone;
+        return x.phone === '未填写' && x.name === name;
+      });
+      var d = new Date();
+      var today = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      if (!u) {
+        u = { id: 'u' + Date.now(), name: name, phone: phone || '未填写', orders: 0, spent: 0, status: 'normal', joined: today };
+        users.push(u);
+      } else {
+        u.name = name;
+      }
+      this.setUsers(users);
+      var session = { id: u.id, name: name, phone: u.phone, joined: u.joined, loginAt: Date.now() };
+      write(K.SESSION, session);
+      return session;
+    },
+    updateSessionName: function (name) {
+      var s = this.getSession();
+      if (!s) return null;
+      s.name = name;
+      write(K.SESSION, s);
+      var users = this.getUsers();
+      var u = users.find(function (x) { return x.id === s.id; });
+      if (u) { u.name = name; this.setUsers(users); }
+      return s;
+    },
+    clearSession: function () {
+      try { ls().removeItem(K.SESSION); } catch (e) {}
+    },
     getMerchants: function () { return read(K.MERCHANTS, []); },
     setMerchants: function (v) { return write(K.MERCHANTS, v); },
     getSettings: function () { return read(K.SETTINGS, SEED_SETTINGS); },
@@ -439,8 +474,11 @@
       if (c) { c.used = !c.used; this.setCoupons(list); emit(); }
     },
     resetAll: function () {
+      var session = read(K.SESSION, null);
       Object.keys(K).forEach(function (k) { try { ls().removeItem(K[k]); } catch (e) {} });
-      init(); emit();
+      init();
+      if (session) write(K.SESSION, session);
+      emit();
     },
   };
 

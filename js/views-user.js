@@ -264,14 +264,16 @@
     var orders = S.getOrders(), coupons = S.getCoupons().filter(function (c) { return !c.used; });
     var spent = orders.reduce(function (s, o) { return s + (o.total || 0); }, 0);
     var phone = S.getMerchantPhone();
+    var session = S.getSession() || { name: '同学' };
     var h = '';
-    h += '<div class="hero"><div class="hero-name">Hi，张先生 👋</div><div class="hero-sub">欢迎回来，享受美味时光</div></div>';
+    h += '<div class="hero"><div class="hero-name">Hi，' + E(session.name) + ' 👋</div><div class="hero-sub">欢迎回来，享受美味时光</div></div>';
     h += '<div class="stat-grid" style="margin-bottom:12px">' +
       '<div class="stat-box"><div class="sb-val">' + orders.length + '</div><div class="sb-label">我的订单</div></div>' +
       '<div class="stat-box"><div class="sb-val">' + coupons.length + '</div><div class="sb-label">可用优惠券</div></div>' +
       '<div class="stat-box"><div class="sb-val">' + U.money(spent) + '</div><div class="sb-label">累计消费</div></div>' +
       '<div class="stat-box"><div class="sb-val">' + S.getReviews().length + '</div><div class="sb-label">我的评价</div></div></div>';
     h += '<div class="card">' +
+      '<div class="list-row" data-action="go" data-href="#/user/account"><span class="lr-icon">👤</span><span class="flex1">个人资料 / 修改昵称</span><span class="tiny muted">' + E(session.name) + '</span><span class="arrow">›</span></div>' +
       '<div class="list-row" data-action="go" data-href="#/user/address"><span class="lr-icon">📍</span><span class="flex1">我的收货地址</span><span class="arrow">›</span></div>' +
       '<div class="list-row" data-action="go" data-href="#/user/coupons"><span class="lr-icon">🎟️</span><span class="flex1">我的优惠券</span><span class="tag">' + coupons.length + ' 张</span><span class="arrow">›</span></div>' +
       '<a class="list-row" href="tel:' + E(phone) + '"><span class="lr-icon">📞</span><span class="flex1">联系商家</span><span class="tiny muted">' + E(phone) + '</span><span class="arrow">›</span></a>' +
@@ -280,10 +282,26 @@
     h += '<div class="card"><div class="card-title">其他入口</div>' +
       '<div class="list-row" data-action="switch-role" data-role="merchant"><span class="lr-icon">🍳</span><span class="flex1">进入商家端</span><span class="tiny muted">商家专用</span><span class="arrow">›</span></div>' +
       '<div class="list-row" data-action="switch-role" data-role="admin"><span class="lr-icon">📊</span><span class="flex1">进入管理后台</span><span class="tiny muted">管理员专用</span><span class="arrow">›</span></div>' +
-      '<div class="list-row" data-action="reset-data"><span class="lr-icon">♻️</span><span class="flex1">重置演示数据</span><span class="arrow">›</span></div></div>';
+      '<div class="list-row" data-action="reset-data"><span class="lr-icon">♻️</span><span class="flex1">重置演示数据</span><span class="arrow">›</span></div>' +
+      '<div class="list-row" data-action="logout"><span class="lr-icon">🚪</span><span class="flex1">退出登录</span><span class="arrow">›</span></div></div>';
     h += '<div style="text-align:center;margin-top:18px;font-size:20px;opacity:.45">校园外卖平台 · v1.0 Web</div>';
-    h += '<div class="tiny muted" style="text-align:center;margin-top:6px;line-height:1.7">数据仅保存在当前浏览器，可随时重置<br>本链接可直接转发给他人打开</div>';
+    h += '<div class="tiny muted" style="text-align:center;margin-top:6px;line-height:1.7">昵称与资料可在「个人资料」中随时修改<br>本链接可直接转发给他人打开</div>';
     return U.page('我的', h, { tab: 'profile' });
+  };
+
+  /* ---------------- 个人资料 ---------------- */
+  V.account = function (p) {
+    var session = S.getSession() || {};
+    if (p.ui.nickName === undefined) p.ui.nickName = session.name || '';
+    var h = '<div class="hero"><div class="hero-name">👤 ' + E(session.name || '同学') + '</div>' +
+      '<div class="hero-sub">' + E(session.phone && session.phone !== '未填写' ? session.phone : '未绑定手机号') +
+      ' · 加入于 ' + E(session.joined || '--') + '</div></div>';
+    h += '<div class="card"><div class="form-field"><label class="form-label">昵称</label>' +
+      '<input class="input" maxlength="12" data-model="nickName" value="' + E(p.ui.nickName) + '" placeholder="输入新昵称"></div>' +
+      '<div class="btn btn-block" data-action="save-nickname">保存昵称</div>' +
+      '<div class="tiny muted" style="text-align:center;margin-top:8px">昵称会用于首页问候和平台用户列表</div></div>';
+    h += '<div class="card"><div class="list-row" data-action="logout"><span class="lr-icon">🚪</span><span class="flex1">退出登录</span><span class="arrow">›</span></div></div>';
+    return U.page('个人资料', h, { back: true });
   };
 
   /* ---------------- 搜索 ---------------- */
@@ -367,4 +385,25 @@
   };
 
   window.Views.user = V;
+
+  /* ---------------- 登录页 ---------------- */
+  window.Views.login = {
+    home: function (p) {
+      var h = '<div class="login-wrap">' +
+        '<div class="login-logo">🍜</div>' +
+        '<div class="login-title">校园外卖</div>' +
+        '<div class="login-sub">足不出校 · 吃遍食堂与周边</div>' +
+        '<div class="card login-card">' +
+        '<div class="form-field"><label class="form-label">昵称</label>' +
+        '<input class="input" maxlength="12" data-model="loginName" value="' + E(p.ui.loginName || '') + '" placeholder="给自己起个昵称"></div>' +
+        '<div class="form-field"><label class="form-label">手机号（选填）</label>' +
+        '<input class="input" maxlength="11" data-model="loginPhone" value="' + E(p.ui.loginPhone || '') + '" placeholder="用于商家联系你"></div>' +
+        '<div class="btn btn-block" data-action="login">进入校园外卖</div>' +
+        '<div class="tiny muted login-tip">登录后可在「我的 → 个人资料」随时修改昵称</div>' +
+        '</div>' +
+        '<div class="login-foot">同一链接多人使用，云端数据实时同步<br>登录后可在顶部切换商家端 / 管理后台</div>' +
+        '</div>';
+      return U.page('登录', h, {});
+    }
+  };
 })();

@@ -93,6 +93,14 @@
   }
   function render(navigate) {
     var parsed = parseHash(location.hash);
+    if (parsed.role !== 'login' && !S.getSession()) {
+      location.hash = '#/login';
+      return;
+    }
+    if (parsed.role === 'login' && S.getSession()) {
+      location.hash = '#/user/shops';
+      return;
+    }
     App.params = parsed.params;
     var view = (window.Views[parsed.role] || {})[parsed.page];
     var res;
@@ -454,6 +462,34 @@
       }
       case 'refund-order': S.updateOrder(id, { status: 'refunded' }); toast('已退款'); render(false); break;
 
+      /* 登录 / 个人资料 */
+      case 'login': {
+        var nm = (App.ui.loginName || '').trim();
+        var ph = (App.ui.loginPhone || '').trim();
+        if (!nm) { toast('请输入昵称'); return; }
+        if (nm.length > 12) { toast('昵称最多 12 个字'); return; }
+        if (ph && !/^1\d{10}$/.test(ph)) { toast('手机号需为 11 位数字'); return; }
+        S.login(nm, ph);
+        App.ui.loginName = ''; App.ui.loginPhone = '';
+        toast('欢迎，' + nm);
+        navigate('#/user/shops'); break;
+      }
+      case 'save-nickname': {
+        var nn = (App.ui.nickName || '').trim();
+        if (!nn) { toast('昵称不能为空'); return; }
+        if (nn.length > 12) { toast('昵称最多 12 个字'); return; }
+        S.updateSessionName(nn);
+        App.ui.nickName = nn;
+        toast('昵称已更新');
+        back(); break;
+      }
+      case 'logout':
+        confirmModal('退出登录', '退出后需要重新输入昵称才能进入', function () {
+          S.clearSession();
+          navigate('#/login');
+        });
+        break;
+
       default: break;
     }
   }
@@ -503,7 +539,7 @@
     toast('已同步最新数据');
   });
   S.init();
-  if (!location.hash) location.hash = '#/user/shops';
+  if (!location.hash) location.hash = S.getSession() ? '#/user/shops' : '#/login';
   App.currentHash = location.hash;
   tickClock(); setInterval(tickClock, 30000);
   render(true);
