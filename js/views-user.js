@@ -266,7 +266,9 @@
     var phone = S.getMerchantPhone();
     var session = S.getSession() || { name: '同学' };
     var h = '';
-    h += '<div class="hero"><div class="hero-name">Hi，' + E(session.name) + ' 👋</div><div class="hero-sub">欢迎回来，享受美味时光</div></div>';
+    h += '<div class="hero"><div class="between"><div class="hero-name">Hi，' + E(session.name) + ' 👋</div>' +
+      '<span class="hero-edit" data-action="go" data-href="#/user/account">修改昵称</span></div>' +
+      '<div class="hero-sub">欢迎回来，享受美味时光</div></div>';
     h += '<div class="stat-grid" style="margin-bottom:12px">' +
       '<div class="stat-box"><div class="sb-val">' + orders.length + '</div><div class="sb-label">我的订单</div></div>' +
       '<div class="stat-box"><div class="sb-val">' + coupons.length + '</div><div class="sb-label">可用优惠券</div></div>' +
