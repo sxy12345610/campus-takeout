@@ -150,8 +150,11 @@
     h += '<div class="section-head">快捷设置</div><div class="card">' +
       U.switchRow('新订单语音提醒', '新订单播放提示音', 'soundAlert', !!settings.soundAlert) +
       U.switchRow('自动接单', '开启后新订单自动进入制作', 'autoAccept', !!settings.autoAccept) + '</div>';
+    h += '<div class="section-head">账号与入口</div><div class="card">' +
+      '<div class="list-row" data-action="switch-role" data-role="admin"><span class="lr-icon">📊</span><span class="flex1">切换到管理后台</span><span class="tiny muted">需后台密码</span><span class="arrow">›</span></div>' +
+      '<div class="list-row" data-action="switch-role" data-role="user"><span class="lr-icon">🛵</span><span class="flex1">返回顾客端</span><span class="arrow">›</span></div>' +
+      '<div class="list-row" data-action="exit-merchant"><span class="lr-icon">🚪</span><span class="flex1">退出商家端</span><span class="arrow">›</span></div></div>';
     h += '<div class="tiny muted" style="text-align:center;margin-top:16px;line-height:1.8">订单流程：接单 → 出餐 → 取餐 → 已送达<br>本店由商家自配送，无需骑手端</div>';
-    h += '<div class="card" style="margin-top:12px"><div class="list-row" data-action="exit-merchant"><span class="lr-icon">🚪</span><span class="flex1">退出商家端</span><span class="arrow">›</span></div></div>';
     return U.page('后台首页', h, { tab: 'home' });
   };
 
@@ -546,8 +549,9 @@
       return '<div class="between" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><div class="small bold">' + E(a.title) + '</div>' +
         '<div class="tiny muted">' + E(a.type) + '</div></div><span class="tag ' + (a.status === 'on' ? 'tag-green' : 'tag-gray') + '">' + (a.status === 'on' ? '进行中' : '已关闭') + '</span></div>';
     }).join('') + '</div>';
-    h += '<div class="section-head">演示管理</div><div class="card">' +
+    h += '<div class="section-head">账号与演示管理</div><div class="card">' +
       '<div class="list-row" data-action="reset-data"><span class="lr-icon">♻️</span><span class="flex1">重置全部演示数据</span><span class="arrow">›</span></div>' +
+      '<div class="list-row" data-action="switch-role" data-role="merchant"><span class="lr-icon">🍳</span><span class="flex1">切换到商家端</span><span class="tiny muted">需商家密码</span><span class="arrow">›</span></div>' +
       '<div class="list-row" data-action="switch-role" data-role="user"><span class="lr-icon">🛵</span><span class="flex1">返回顾客端</span><span class="arrow">›</span></div>' +
       '<div class="list-row" data-action="exit-admin"><span class="lr-icon">🚪</span><span class="flex1">退出管理后台</span><span class="arrow">›</span></div></div>';
     h += '<div class="tiny muted" style="text-align:center;margin-top:16px;line-height:1.8">校园外卖平台 · 管理后台<br>数据已开启云端同步，可随时重置</div>';

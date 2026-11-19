@@ -76,14 +76,10 @@
   /* ---------------- 渲染 ---------------- */
   function renderRolebar() {
     var parsed = parseHash(location.hash);
-    var cur = parsed.role;
-    var isLogin = cur === 'login' || parsed.page === 'login';
-    document.body.setAttribute('data-role', isLogin ? 'login' : cur);
-    var show = !isLogin && (cur === 'merchant' || cur === 'admin' || S.canRole('merchant') || S.canRole('admin'));
-    rolebar.style.display = show ? 'flex' : 'none';
-    rolebar.innerHTML = show ? ROLES.map(function (r) {
-      return '<div class="rb-item ' + (cur === r.key ? 'active' : '') + '" data-action="switch-role" data-role="' + r.key + '">' + r.label + '</div>';
-    }).join('') : '';
+    var isLogin = parsed.role === 'login' || parsed.page === 'login';
+    document.body.setAttribute('data-role', isLogin ? 'login' : parsed.role);
+    rolebar.style.display = 'none';
+    rolebar.innerHTML = '';
   }
   function renderTabbar(role, active) {
     if (!active) { tabbar.style.display = 'none'; tabbar.innerHTML = ''; return; }

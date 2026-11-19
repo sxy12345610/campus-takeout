@@ -282,6 +282,8 @@
       '<div class="list-row" data-action="go" data-href="#/user/location"><span class="lr-icon">🧭</span><span class="flex1">手动设置位置</span><span class="arrow">›</span></div>' +
       '</div>';
     h += '<div class="card"><div class="card-title">其他</div>' +
+      (S.canRole('merchant') ? '<div class="list-row" data-action="switch-role" data-role="merchant"><span class="lr-icon">🍳</span><span class="flex1">进入商家端</span><span class="tiny muted">本机已认证</span><span class="arrow">›</span></div>' : '') +
+      (S.canRole('admin') ? '<div class="list-row" data-action="switch-role" data-role="admin"><span class="lr-icon">📊</span><span class="flex1">进入管理后台</span><span class="tiny muted">本机已认证</span><span class="arrow">›</span></div>' : '') +
       '<div class="list-row" data-action="reset-data"><span class="lr-icon">♻️</span><span class="flex1">重置演示数据</span><span class="arrow">›</span></div>' +
       '<div class="list-row" data-action="logout"><span class="lr-icon">🚪</span><span class="flex1">退出登录</span><span class="arrow">›</span></div></div>';
     h += '<div style="text-align:center;margin-top:18px;font-size:20px;opacity:.45">校园外卖平台 · v1.0 Web</div>';
