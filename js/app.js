@@ -344,11 +344,12 @@
         var chosen = App.ui.couponId ? coupons.find(function (c) { return c.id === App.ui.couponId; }) : null;
         var off = chosen ? chosen.amount : 0;
         var fee = shop ? shop.deliveryFee : 0;
+        var promoOff = S.getShopPromoOff(sum.shopId, sum.total);
         var order = S.placeOrder({
           shopId: sum.shopId, shopName: shop ? shop.name : '', shopEmoji: shop ? shop.emoji : '',
           items: sum.cart.filter(function (c) { return c.selected; }),
-          goodsTotal: sum.total, deliveryFee: fee, couponAmount: off,
-          total: Math.max(0, sum.total + fee - off),
+          goodsTotal: sum.total, deliveryFee: fee, promoAmount: promoOff, couponAmount: off,
+          total: Math.max(0, sum.total + fee - promoOff - off),
           address: addr ? addr.detail : '请补充地址', receiver: addr ? addr.name : '顾客',
           phone: addr ? addr.phone : '', deliverTime: '尽快送达', note: App.ui.note || '',
         });

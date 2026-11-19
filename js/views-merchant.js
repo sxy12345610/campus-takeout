@@ -34,7 +34,8 @@
       var count = (o.items || []).reduce(function (s, i) { return s + i.count; }, 0);
       extra = '<div class="tiny sub" style="margin-top:4px">🧾 商品 ' + count + ' 件 · 小计 ' + U.money(o.goodsTotal) +
         ' · 配送费 ' + U.money(o.deliveryFee) +
-        (o.couponAmount ? ' · 优惠 -' + U.money(o.couponAmount) : '') + '</div>';
+        (o.promoAmount ? ' · 满减 -' + U.money(o.promoAmount) : '') +
+        (o.couponAmount ? ' · 优惠券 -' + U.money(o.couponAmount) : '') + '</div>';
     }
     return '<div class="order-card"><div class="oc-head"><span class="oc-shop">' + E(o.shopEmoji || '🍽️') + ' ' + E(o.shopName) + '</span>' + U.statusTag(o.status) + '</div>' +
       '<div class="oc-goods">' + goods + '<div class="flex1 small muted ellipsis">' +

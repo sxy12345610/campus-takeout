@@ -370,6 +370,26 @@
       };
     },
 
+    /* ---- 店铺满减（解析商家 promo，如「满30减8 · 满50减15」） ---- */
+    getShopPromoTiers: function (shopId) {
+      var shop = this.getShop(shopId);
+      var promo = (shop && shop.promo) || '';
+      var tiers = [], m;
+      var re = /满\s*(\d+(?:\.\d+)?)\s*减\s*(\d+(?:\.\d+)?)/g;
+      while ((m = re.exec(promo))) {
+        tiers.push({ need: parseFloat(m[1]), off: parseFloat(m[2]) });
+      }
+      tiers.sort(function (a, b) { return a.need - b.need; });
+      return tiers;
+    },
+    getShopPromoOff: function (shopId, amount) {
+      var best = 0;
+      this.getShopPromoTiers(shopId).forEach(function (t) {
+        if (amount >= t.need && t.off > best) best = t.off;
+      });
+      return best;
+    },
+
     /* ---- 订单 ---- */
     placeOrder: function (payload) {
       var orders = this.getOrders();
@@ -378,7 +398,7 @@
         userId: payload.userId || this.currentUserId(),
         shopId: payload.shopId, shopName: payload.shopName, shopEmoji: payload.shopEmoji,
         items: payload.items, goodsTotal: payload.goodsTotal, deliveryFee: payload.deliveryFee,
-        couponAmount: payload.couponAmount, total: payload.total,
+        promoAmount: payload.promoAmount || 0, couponAmount: payload.couponAmount, total: payload.total,
         address: payload.address, receiver: payload.receiver, phone: payload.phone,
         deliverTime: payload.deliverTime, note: payload.note || '',
         timeline: makeTimeline('submitted'), reviewed: false,

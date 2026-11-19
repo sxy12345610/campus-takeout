@@ -131,9 +131,16 @@
     h += '<div class="divider"></div><div class="between small">' +
       '<span data-action="toggle-all" style="cursor:pointer">' + (sum.allSelected ? '☑ 全选' : '☐ 全选') + '</span>' +
       '<span class="muted" data-action="remove-selected" style="cursor:pointer">删除已选</span></div></div>';
+    var fee = shop ? shop.deliveryFee : 0;
+    var promoOff = S.getShopPromoOff(sum.shopId, sum.total);
+    var tiers = S.getShopPromoTiers(sum.shopId);
+    var nextTier = tiers.find(function (t) { return t.need > sum.total; });
     h += '<div class="card"><div class="between" style="margin-bottom:8px"><span class="sub">商品小计</span><span>' + U.money(sum.total) + '</span></div>' +
-      '<div class="between" style="margin-bottom:8px"><span class="sub">配送费</span><span>' + U.money(shop ? shop.deliveryFee : 0) + '</span></div>' +
-      '<div class="divider"></div><div class="between"><span class="bold">合计</span><span class="price" style="font-size:18px">' + (sum.total + (shop ? shop.deliveryFee : 0)) + '</span></div></div>';
+      (tiers.length ? '<div class="between" style="margin-bottom:8px"><span class="sub">店铺满减</span><span style="color:var(--primary)">' +
+        (promoOff ? '-' + U.money(promoOff) : (nextTier ? '未满' + nextTier.need + '减' + nextTier.off : '')) + '</span></div>' : '') +
+      '<div class="between" style="margin-bottom:8px"><span class="sub">配送费</span><span>' + U.money(fee) + '</span></div>' +
+      '<div class="divider"></div><div class="between"><span class="bold">合计</span><span class="price" style="font-size:18px">' + (sum.total + fee - promoOff) + '</span></div>' +
+      (nextTier ? '<div class="tiny muted" style="margin-top:6px">再买 ' + U.money(nextTier.need - sum.total) + ' 可享「满' + nextTier.need + '减' + nextTier.off + '」</div>' : '') + '</div>';
     h += '<div class="btn btn-block ' + (sum.count ? '' : 'disabled') + '" ' + (sum.count ? 'data-action="go" data-href="#/user/checkout"' : '') + '>去结算（' + sum.count + ' 件）</div>';
     return U.page('购物车', h, { tab: 'cart' });
   };
@@ -148,7 +155,10 @@
     var chosen = p.ui.couponId ? coupons.find(function (c) { return c.id === p.ui.couponId; }) : null;
     var couponAmount = chosen ? chosen.amount : 0;
     var fee = shop ? shop.deliveryFee : 0;
-    var total = Math.max(0, sum.total + fee - couponAmount);
+    var promoOff = S.getShopPromoOff(sum.shopId, sum.total);
+    var tiers = S.getShopPromoTiers(sum.shopId);
+    var nextTier = tiers.find(function (t) { return t.need > sum.total; });
+    var total = Math.max(0, sum.total + fee - promoOff - couponAmount);
 
     var h = '';
     h += '<div class="card" data-action="go" data-href="#/user/address" style="cursor:pointer"><div class="between">' +
@@ -162,6 +172,9 @@
       }).join('') + '</div>';
     h += '<div class="card">' +
       '<div class="between" style="padding:5px 0"><span class="sub">商品小计</span><span>' + U.money(sum.total) + '</span></div>' +
+      (tiers.length ? '<div class="between" style="padding:5px 0"><span class="sub">店铺满减</span><span style="color:var(--primary)">' +
+        (promoOff ? '-' + U.money(promoOff) : (nextTier ? '未满' + nextTier.need + '减' + nextTier.off : '')) + '</span></div>' +
+        (nextTier ? '<div class="tiny muted" style="padding:0 0 5px">再买 ' + U.money(nextTier.need - sum.total) + ' 可享「满' + nextTier.need + '减' + nextTier.off + '」</div>' : '') : '') +
       '<div class="between" style="padding:5px 0"><span class="sub">配送费 <span class="tiny muted">(商家设置)</span></span><span>' + U.money(fee) + '</span></div>' +
       '<div class="between" style="padding:5px 0;cursor:pointer" data-action="open-modal" data-modal="coupon"><span class="sub">优惠券</span><span style="color:var(--primary)">' + (chosen ? '-' + U.money(couponAmount) : (coupons.length ? coupons.length + ' 张可用 ›' : '暂无可用 ›')) + '</span></div>' +
       '<div class="divider"></div><div class="between"><span class="bold">实付款</span><span class="price" style="font-size:19px">' + total + '</span></div></div>';
@@ -216,6 +229,7 @@
       }).join('') +
       '<div class="divider"></div>' +
       '<div class="between small" style="padding:3px 0"><span class="sub">商品小计</span><span>' + U.money(o.goodsTotal) + '</span></div>' +
+      (o.promoAmount ? '<div class="between small" style="padding:3px 0"><span class="sub">店铺满减</span><span style="color:var(--primary)">-' + U.money(o.promoAmount) + '</span></div>' : '') +
       '<div class="between small" style="padding:3px 0"><span class="sub">配送费</span><span>' + U.money(o.deliveryFee) + '</span></div>' +
       '<div class="between small" style="padding:3px 0"><span class="sub">优惠券</span><span>-' + U.money(o.couponAmount) + '</span></div>' +
       '<div class="divider"></div><div class="between"><span class="bold">实付款</span><span class="price" style="font-size:18px">' + o.total + '</span></div></div>';
