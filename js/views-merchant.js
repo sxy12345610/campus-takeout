@@ -64,7 +64,7 @@
   };
 
   M.home = function (p) {
-    var orders = S.getOrders();
+    var orders = S.getRealOrders();
     var shop = S.getShop('s1') || {};
     var dishes = S.getDishesByShop('s1');
     var cats = S.getShopCategories('s1');
@@ -160,7 +160,7 @@
 
   M.orders = function (p) {
     var tab = p.ui.mOrdersTab || '待接单';
-    var all = S.getOrders();
+    var all = S.getRealOrders();
     var valid = all.filter(function (o) { return !notCounted(o); });
     var revenue = sumTotal(valid);
     var pending = all.filter(function (o) { return o.status === 'pending'; }).length;
@@ -223,13 +223,30 @@
 
   M.stats = function (p) {
     var period = p.ui.mStatsPeriod || '今日';
-    var factor = period === '今日' ? 1 : period === '近7天' ? 6.8 : 26;
-    var orders = S.getOrders();
+    var orders = S.getRealOrders();
     var valid = orders.filter(function (o) { return !notCounted(o); });
-    var revenue = Math.round(sumTotal(valid) * factor);
-    var orderCount = Math.round(valid.length * factor);
-    var reviews = S.getReviews();
-    var goodRate = reviews.length ? Math.round(reviews.filter(function (r) { return r.rating >= 4; }).length / reviews.length * 100) : 96;
+    var now = new Date();
+    function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+    function dateOf(s) {
+      var m = /^(\d{1,2})-(\d{1,2}) (\d{1,2}):(\d{1,2})$/.exec(s || '');
+      if (!m) return null;
+      var d = new Date(now.getFullYear(), +m[1] - 1, +m[2], +m[3], +m[4]);
+      if (d.getTime() - now.getTime() > 2 * 86400000) d = new Date(now.getFullYear() - 1, +m[1] - 1, +m[2], +m[3], +m[4]);
+      return d;
+    }
+    function dayStart(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
+    var todayStart = dayStart(now);
+    var days = period === '今日' ? 0 : period === '近7天' ? 6 : 29;
+    var scoped = valid.filter(function (o) {
+      var d = dateOf(o.createdAt);
+      if (!d) return false;
+      var diff = Math.round((todayStart - dayStart(d)) / 86400000);
+      return diff >= 0 && diff <= days;
+    });
+    var revenue = sumTotal(scoped);
+    var orderCount = scoped.length;
+    var reviews = S.getReviews().filter(function (r) { return !!r.userId; });
+    var goodRate = reviews.length ? Math.round(reviews.filter(function (r) { return r.rating >= 4; }).length / reviews.length * 100) : 0;
 
     var h = U.seg([{ value: '今日', label: '今日' }, { value: '近7天', label: '近 7 天' }, { value: '近30天', label: '近 30 天' }], period, 'mStatsPeriod');
     h += '<div class="stat-grid" style="margin-bottom:12px">' +
@@ -238,18 +255,45 @@
       statBox(U.money(orderCount ? Math.round(revenue / orderCount) : 0), '客单价') +
       statBox(goodRate + '%', '好评率') + '</div>';
 
-    /* 营业额趋势 */
-    var labels = period === '今日' ? ['10点', '11点', '12点', '13点', '14点', '17点', '18点', '19点']
-      : period === '近7天' ? ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-      : ['第1周', '第2周', '第3周', '第4周'];
-    var baseValues = period === '今日' ? [120, 380, 860, 640, 220, 420, 920, 760]
-      : period === '近7天' ? [2100, 2400, 1980, 2600, 3100, 4200, 3900]
-      : [15800, 17200, 16500, 18900];
-    var max = Math.max.apply(null, baseValues);
+    /* 营业额趋势（按真实订单统计） */
+    var labels = [], values = [];
+    if (period === '今日') {
+      labels = ['0-3点', '3-6点', '6-9点', '9-12点', '12-15点', '15-18点', '18-21点', '21-24点'];
+      values = [0, 0, 0, 0, 0, 0, 0, 0];
+      scoped.forEach(function (o) {
+        var d = dateOf(o.createdAt);
+        if (d) values[Math.min(7, Math.floor(d.getHours() / 3))] += o.total;
+      });
+    } else if (period === '近7天') {
+      for (var i = 6; i >= 0; i--) {
+        var dd = new Date(todayStart - i * 86400000);
+        labels.push(pad2(dd.getMonth() + 1) + '-' + pad2(dd.getDate()));
+        values.push(0);
+      }
+      scoped.forEach(function (o) {
+        var d = dateOf(o.createdAt);
+        if (!d) return;
+        var diff = Math.round((todayStart - dayStart(d)) / 86400000);
+        if (diff >= 0 && diff < 7) values[6 - diff] += o.total;
+      });
+    } else {
+      labels = ['第1周', '第2周', '第3周', '第4周'];
+      values = [0, 0, 0, 0];
+      scoped.forEach(function (o) {
+        var d = dateOf(o.createdAt);
+        if (!d) return;
+        var diff = Math.round((todayStart - dayStart(d)) / 86400000);
+        if (diff >= 0 && diff < 28) {
+          var idx = 3 - Math.floor(diff / 7);
+          if (idx >= 0 && idx < 4) values[idx] += o.total;
+        }
+      });
+    }
+    var max = Math.max.apply(null, values.concat([1]));
     var bars = labels.map(function (label, i) {
-      var height = Math.round(baseValues[i] / max * 88) + 8;
-      return '<div class="bar-col"><div class="bar-val">' + Math.round(baseValues[i] * factor) + '</div>' +
-        '<div class="bar" style="height:' + height + '%"></div><div class="bar-label">' + label + '</div></div>';
+      var barH = Math.round(values[i] / max * 88) + 8;
+      return '<div class="bar-col"><div class="bar-val">' + Math.round(values[i]) + '</div>' +
+        '<div class="bar" style="height:' + barH + '%"></div><div class="bar-label">' + label + '</div></div>';
     }).join('');
     h += '<div class="section-head">营业额趋势</div><div class="card"><div class="bar-chart">' + bars + '</div></div>';
 
@@ -262,35 +306,48 @@
     });
     h += '</div>';
 
-    /* 分类销售占比 */
+    /* 分类销售占比（按真实订单商品统计） */
+    var sold = {};
+    scoped.forEach(function (o) {
+      (o.items || []).forEach(function (it) { sold[it.name] = (sold[it.name] || 0) + it.count; });
+    });
     var dishes = S.getDishesByShop('s1');
     var catTotals = S.getShopCategories('s1').map(function (c) {
       var items = dishes.filter(function (d) { return d.category === c; });
-      return { cat: c, count: items.length, sales: items.reduce(function (s, d) { return s + d.sales; }, 0) };
+      return { cat: c, count: items.length, sales: items.reduce(function (s, d) { return s + (sold[d.name] || 0); }, 0) };
     });
-    var totalSales = catTotals.reduce(function (s, c) { return s + c.sales; }, 0) || 1;
+    var totalSales = catTotals.reduce(function (s, c) { return s + c.sales; }, 0);
     catTotals.sort(function (a, b) { return b.sales - a.sales; });
     h += '<div class="section-head">分类销售占比</div><div class="card">';
-    catTotals.forEach(function (c) {
-      var pct = Math.round(c.sales / totalSales * 100);
-      h += '<div style="margin-bottom:10px"><div class="between tiny" style="margin-bottom:4px"><span>' + E(c.cat) + '</span>' +
-        '<span class="muted">' + c.sales + ' 份 · ' + pct + '%</span></div>' +
-        '<div class="progress"><i style="width:' + pct + '%"></i></div></div>';
-    });
+    if (!totalSales) {
+      h += '<div class="small muted">暂无销售数据</div>';
+    } else {
+      catTotals.forEach(function (c) {
+        var pct = Math.round(c.sales / totalSales * 100);
+        h += '<div style="margin-bottom:10px"><div class="between tiny" style="margin-bottom:4px"><span>' + E(c.cat) + '</span>' +
+          '<span class="muted">' + c.sales + ' 份 · ' + pct + '%</span></div>' +
+          '<div class="progress"><i style="width:' + pct + '%"></i></div></div>';
+      });
+    }
     h += '</div>';
 
     /* 菜品销量排行 */
-    var rank = dishes.slice().sort(function (a, b) { return b.sales - a.sales; }).slice(0, 6);
-    var maxSales = rank.length ? rank[0].sales : 1;
+    var rank = dishes.map(function (d) { return { d: d, sales: sold[d.name] || 0 }; })
+      .sort(function (a, b) { return b.sales - a.sales; }).slice(0, 6);
+    var maxSales = Math.max.apply(null, rank.map(function (x) { return x.sales; }).concat([1]));
     h += '<div class="section-head">菜品销量排行</div><div class="card">';
-    h += rank.map(function (d, i) {
-      var pct = Math.round(d.sales / maxSales * 100);
-      return '<div class="rank-row"><div class="rank-no ' + (i < 3 ? 'top' : '') + '">' + (i + 1) + '</div>' +
-        '<div class="rank-emoji">' + (d.emoji || '🍽️') + '</div>' +
-        '<div class="rank-main"><div class="rank-name">' + E(d.name) + '</div>' +
-        '<div class="progress"><i style="width:' + pct + '%"></i></div></div>' +
-        '<div class="rank-sales">' + Math.round(d.sales * factor / (period === '今日' ? 8 : 1)) + '份</div></div>';
-    }).join('');
+    if (!totalSales) {
+      h += '<div class="small muted">暂无销量数据</div>';
+    } else {
+      h += rank.map(function (x, i) {
+        var d = x.d, pct = Math.round(x.sales / maxSales * 100);
+        return '<div class="rank-row"><div class="rank-no ' + (i < 3 ? 'top' : '') + '">' + (i + 1) + '</div>' +
+          '<div class="rank-emoji">' + (d.emoji || '🍽️') + '</div>' +
+          '<div class="rank-main"><div class="rank-name">' + E(d.name) + '</div>' +
+          '<div class="progress"><i style="width:' + pct + '%"></i></div></div>' +
+          '<div class="rank-sales">' + x.sales + '份</div></div>';
+      }).join('');
+    }
     h += '</div>';
 
     /* 顾客分析 */
@@ -311,7 +368,7 @@
   M.shop = function (p) {
     var shop = S.getShop('s1') || {};
     var my = S.getMyMerchant();
-    var orders = S.getOrders();
+    var orders = S.getRealOrders();
     var valid = orders.filter(function (o) { return !notCounted(o); });
     var dishes = S.getDishesByShop('s1');
     var customers = {};
@@ -355,8 +412,8 @@
 
   M.users = function (p) {
     var filter = p.ui.mUserTab || '全部顾客';
-    var orders = S.getOrders();
-    var users = S.getUsers();
+    var orders = S.getRealOrders();
+    var users = S.getRealUsers();
     var map = {};
     orders.forEach(function (o) {
       var key = o.phone || o.receiver;
@@ -462,13 +519,15 @@
 
   /* ==================== 管理后台 ==================== */
   A.home = function (p) {
-    var orders = S.getOrders(), users = S.getUsers(), merchants = S.getMerchants();
+    var orders = S.getRealOrders(), users = S.getRealUsers(), merchants = S.getMerchants();
     var pending = merchants.filter(function (m) { return m.status === 'pending'; });
     var gmv = orders.reduce(function (s, o) { return s + (o.status === 'rejected' || o.status === 'refunded' ? 0 : o.total); }, 0);
-    var shops = S.getShops().filter(function (s) { return s.status === 'open'; });
+    var realNames = merchants.filter(function (m) { return m.real && m.status === 'approved'; })
+      .map(function (m) { return m.name; });
+    var shops = S.getShops().filter(function (s) { return s.status === 'open' && realNames.indexOf(s.name) >= 0; });
     var h = '';
     h += '<div class="hero" style="background:linear-gradient(135deg,#7c63e6,#5b3ecb)"><div class="hero-name">📊 平台数据大盘</div>' +
-      '<div class="hero-sub">校园外卖平台 · 管理后台 · 实时演示数据</div></div>';
+      '<div class="hero-sub">校园外卖平台 · 管理后台 · 实时业务数据</div></div>';
     h += '<div class="stat-grid" style="margin-bottom:12px">' +
       '<div class="stat-box hl"><div class="sb-val">' + U.money(gmv) + '</div><div class="sb-label">平台 GMV</div></div>' +
       '<div class="stat-box"><div class="sb-val">' + orders.length + '</div><div class="sb-label">订单总数</div></div>' +
@@ -484,6 +543,7 @@
     });
     h += '</div>';
     h += '<div class="section-head">最近订单</div>';
+    if (!orders.length) h += U.empty('📋', '暂无订单数据，顾客下单后会实时同步');
     h += orders.slice(0, 3).map(function (o) {
       return '<div class="card tight"><div class="between"><span class="bold small">' + E(o.shopName) + '</span>' + U.statusTag(o.status) + '</div>' +
         '<div class="tiny muted" style="margin-top:5px">' + E(o.createdAt) + ' · ' + E(o.receiver) + ' · ' + U.money(o.total) + '</div></div>';
@@ -514,13 +574,17 @@
   };
 
   A.users = function (p) {
-    var list = S.getUsers();
+    var list = S.getRealUsers();
+    var orders = S.getRealOrders();
     var h = '<div class="section-head">平台用户 <span class="sh-more">共 ' + list.length + ' 人</span></div>';
+    if (!list.length) h += U.empty('👥', '暂无注册用户，顾客登录后会自动同步');
     h += list.map(function (u) {
+      var mine = orders.filter(function (o) { return o.userId === u.id && !notCounted(o); });
+      var count = mine.length, spent = sumTotal(mine);
       return '<div class="card"><div class="between"><div><span class="bold">' + E(u.name) + '</span> ' +
         (u.status === 'banned' ? '<span class="tag tag-red">已封禁</span>' : '<span class="tag tag-green">正常</span>') + '</div>' +
         '<span class="tiny muted">' + E(u.phone) + '</span></div>' +
-        '<div class="small sub" style="margin:8px 0">累计 ' + u.orders + ' 单 · 消费 ' + U.money(u.spent) + ' · 注册于 ' + E(u.joined) + '</div>' +
+        '<div class="small sub" style="margin:8px 0">累计 ' + count + ' 单 · 消费 ' + U.money(spent) + ' · 注册于 ' + E(u.joined) + '</div>' +
         '<div class="oc-actions"><div class="btn ' + (u.status === 'banned' ? '' : 'btn-danger') + ' btn-xs" data-action="toggle-user" data-id="' + E(u.id) + '">' +
         (u.status === 'banned' ? '解除封禁' : '封禁用户') + '</div></div></div>';
     }).join('');
@@ -528,9 +592,9 @@
   };
 
   A.orders = function (p) {
-    var list = S.getOrders();
+    var list = S.getRealOrders();
     var h = '<div class="section-head">全部订单 <span class="sh-more">共 ' + list.length + ' 笔</span></div>';
-    if (!list.length) h += U.empty('📋', '暂无订单');
+    if (!list.length) h += U.empty('📋', '暂无订单数据，顾客下单后会实时同步');
     h += list.map(function (o) {
       var acts = (ONGOING.indexOf(o.status) >= 0)
         ? '<div class="btn btn-ghost btn-sm" data-action="refund-order" data-id="' + E(o.id) + '">退款</div>'

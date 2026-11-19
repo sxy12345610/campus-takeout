@@ -239,6 +239,14 @@
     getUsers: function () { return read(K.USERS, []); },
     setUsers: function (v) { return write(K.USERS, v); },
 
+    /* ---- 真实业务数据（由顾客端产生，不含演示种子数据） ---- */
+    getRealOrders: function () {
+      return this.getOrders().filter(function (o) { return !!o.userId; });
+    },
+    getRealUsers: function () {
+      return this.getUsers().filter(function (u) { return u.real === true; });
+    },
+
     /* ---- 当前登录用户的数据（按用户隔离） ---- */
     currentUserId: function () {
       var s = this.getSession();
@@ -276,6 +284,7 @@
       } else {
         u.name = name;
       }
+      u.real = true;
       this.setUsers(users);
       var session = { id: u.id, name: name, phone: u.phone, joined: u.joined, loginAt: Date.now() };
       write(K.SESSION, session);
@@ -469,6 +478,7 @@
       var m = list.find(function (x) { return x.id === id; });
       if (!m) return;
       m.status = status;
+      if (status === 'approved') m.real = true;
       write(K.MERCHANTS, list);
       var shops = this.getShops();
       var shop = shops.find(function (s) { return s.name === m.name; });
@@ -499,7 +509,7 @@
       var d = new Date();
       var joined = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
       var mid = 'm' + Date.now(); var sid = 's' + Date.now();
-      list.push({ id: mid, name: name, owner: (form.owner || '').trim() || '待补充', phone: (form.phone || '').trim() || '待补充', category: category, status: 'pending', joined: joined, commission: 20 });
+      list.push({ id: mid, name: name, owner: (form.owner || '').trim() || '待补充', phone: (form.phone || '').trim() || '待补充', category: category, status: 'pending', joined: joined, commission: 20, real: true });
       this.setMerchants(list);
       var shops = this.getShops();
       shops.push({ id: sid, name: name, emoji: catMap[category], category: category, rating: 5.0, monthSales: 0, deliverMin: 30, distance: '2.0km', minOrder: 0, deliveryFee: 3, notice: '新店入驻，即将上线，敬请期待～', tags: ['新店'], promo: '新店开业优惠', status: 'closed' });
