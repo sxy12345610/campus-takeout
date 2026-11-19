@@ -14,6 +14,7 @@
     USERS: 'wk_users', MERCHANTS: 'wk_merchants', SETTINGS: 'wk_settings',
     MARKETING: 'wk_marketing', CURRENT_SHOP: 'wk_current_shop',
     LOCATION: 'wk_current_location', INIT: 'wk_init_v4', SESSION: 'wk_session',
+    ROLE_AUTH: 'wk_role_auth',
   };
 
   function ls() {
@@ -272,6 +273,24 @@
     clearSession: function () {
       try { ls().removeItem(K.SESSION); } catch (e) {}
     },
+
+    /* ---- 商家 / 后台访问权限（仅保存在本机，不参与云同步） ---- */
+    canRole: function (role) {
+      if (role === 'user') return !!this.getSession();
+      var a = read(K.ROLE_AUTH, {});
+      return !!(a && a[role]);
+    },
+    setRoleAuth: function (role) {
+      var a = read(K.ROLE_AUTH, {});
+      a[role] = true;
+      a.at = Date.now();
+      write(K.ROLE_AUTH, a);
+    },
+    clearRole: function (role) {
+      var a = read(K.ROLE_AUTH, {});
+      delete a[role];
+      write(K.ROLE_AUTH, a);
+    },
     getMerchants: function () { return read(K.MERCHANTS, []); },
     setMerchants: function (v) { return write(K.MERCHANTS, v); },
     getSettings: function () { return read(K.SETTINGS, SEED_SETTINGS); },
@@ -475,9 +494,11 @@
     },
     resetAll: function () {
       var session = read(K.SESSION, null);
+      var auth = read(K.ROLE_AUTH, null);
       Object.keys(K).forEach(function (k) { try { ls().removeItem(K[k]); } catch (e) {} });
       init();
       if (session) write(K.SESSION, session);
+      if (auth) write(K.ROLE_AUTH, auth);
       emit();
     },
   };

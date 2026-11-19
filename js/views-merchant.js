@@ -47,6 +47,22 @@
   }
 
   /* ==================== 商家端 ==================== */
+  M.login = function (p) {
+    var h = '<div class="login-wrap">' +
+      '<div class="login-logo">🍳</div>' +
+      '<div class="login-title">商家登录</div>' +
+      '<div class="login-sub">商家端需要密码验证</div>' +
+      '<div class="card login-card">' +
+      '<div class="form-field"><label class="form-label">商家密码</label>' +
+      '<input class="input" type="password" data-model="merchantPass" value="" placeholder="请输入商家密码"></div>' +
+      '<div class="btn btn-block" data-action="merchant-login">进入商家端</div>' +
+      '<div class="tiny muted login-tip"><span class="link" data-action="go" data-href="#/login">返回顾客端</span> · <span class="link" data-action="go" data-href="#/admin/login">后台登录</span></div>' +
+      '</div>' +
+      '<div class="login-foot">密码由平台管理员分配<br>商家端可管理本店订单、菜品与店铺信息</div>' +
+      '</div>';
+    return U.page('商家登录', h, {});
+  };
+
   M.home = function (p) {
     var orders = S.getOrders();
     var shop = S.getShop('s1') || {};
@@ -135,6 +151,7 @@
       U.switchRow('新订单语音提醒', '新订单播放提示音', 'soundAlert', !!settings.soundAlert) +
       U.switchRow('自动接单', '开启后新订单自动进入制作', 'autoAccept', !!settings.autoAccept) + '</div>';
     h += '<div class="tiny muted" style="text-align:center;margin-top:16px;line-height:1.8">订单流程：接单 → 出餐 → 取餐 → 已送达<br>本店由商家自配送，无需骑手端</div>';
+    h += '<div class="card" style="margin-top:12px"><div class="list-row" data-action="exit-merchant"><span class="lr-icon">🚪</span><span class="flex1">退出商家端</span><span class="arrow">›</span></div></div>';
     return U.page('后台首页', h, { tab: 'home' });
   };
 
@@ -531,9 +548,27 @@
     }).join('') + '</div>';
     h += '<div class="section-head">演示管理</div><div class="card">' +
       '<div class="list-row" data-action="reset-data"><span class="lr-icon">♻️</span><span class="flex1">重置全部演示数据</span><span class="arrow">›</span></div>' +
-      '<div class="list-row" data-action="switch-role" data-role="user"><span class="lr-icon">🛵</span><span class="flex1">返回顾客端</span><span class="arrow">›</span></div></div>';
-    h += '<div class="tiny muted" style="text-align:center;margin-top:16px;line-height:1.8">校园外卖平台 · 管理后台<br>数据保存在当前浏览器，可随时重置</div>';
+      '<div class="list-row" data-action="switch-role" data-role="user"><span class="lr-icon">🛵</span><span class="flex1">返回顾客端</span><span class="arrow">›</span></div>' +
+      '<div class="list-row" data-action="exit-admin"><span class="lr-icon">🚪</span><span class="flex1">退出管理后台</span><span class="arrow">›</span></div></div>';
+    h += '<div class="tiny muted" style="text-align:center;margin-top:16px;line-height:1.8">校园外卖平台 · 管理后台<br>数据已开启云端同步，可随时重置</div>';
     return U.page('平台设置', h, { tab: 'settings' });
+  };
+
+  /* 后台密码登录页 */
+  A.login = function (p) {
+    var h = '<div class="login-wrap">' +
+      '<div class="login-logo">📊</div>' +
+      '<div class="login-title">管理后台</div>' +
+      '<div class="login-sub">仅平台管理员可进入</div>' +
+      '<div class="card login-card">' +
+      '<div class="form-field"><label class="form-label">后台密码</label>' +
+      '<input class="input" type="password" data-model="adminPass" value="" placeholder="请输入后台密码"></div>' +
+      '<div class="btn btn-block" data-action="admin-login">进入管理后台</div>' +
+      '<div class="tiny muted login-tip"><span class="link" data-action="go" data-href="#/login">返回顾客端</span> · <span class="link" data-action="go" data-href="#/merchant/login">商家登录</span></div>' +
+      '</div>' +
+      '<div class="login-foot">后台可审核商家入驻、管理用户与订单<br>请勿把后台密码告知普通顾客</div>' +
+      '</div>';
+    return U.page('管理后台', h, {});
   };
 
   window.Views.merchant = M;

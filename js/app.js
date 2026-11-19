@@ -14,6 +14,9 @@
   };
   window.App = App;
 
+  /* 商家端 / 管理后台访问密码（可自行修改） */
+  var PASSWORDS = { merchant: '888888', admin: 'admin888' };
+
   var ROLES = [
     { key: 'user', label: '🛵 顾客端', home: '#/user/shops' },
     { key: 'merchant', label: '🍳 商家端', home: '#/merchant/home' },
@@ -72,11 +75,15 @@
 
   /* ---------------- 渲染 ---------------- */
   function renderRolebar() {
-    var cur = currentRole();
-    document.body.setAttribute('data-role', cur);
-    rolebar.innerHTML = ROLES.map(function (r) {
+    var parsed = parseHash(location.hash);
+    var cur = parsed.role;
+    var isLogin = cur === 'login' || parsed.page === 'login';
+    document.body.setAttribute('data-role', isLogin ? 'login' : cur);
+    var show = !isLogin && (cur === 'merchant' || cur === 'admin' || S.canRole('merchant') || S.canRole('admin'));
+    rolebar.style.display = show ? 'flex' : 'none';
+    rolebar.innerHTML = show ? ROLES.map(function (r) {
       return '<div class="rb-item ' + (cur === r.key ? 'active' : '') + '" data-action="switch-role" data-role="' + r.key + '">' + r.label + '</div>';
-    }).join('');
+    }).join('') : '';
   }
   function renderTabbar(role, active) {
     if (!active) { tabbar.style.display = 'none'; tabbar.innerHTML = ''; return; }
@@ -93,14 +100,13 @@
   }
   function render(navigate) {
     var parsed = parseHash(location.hash);
-    if (parsed.role !== 'login' && !S.getSession()) {
-      location.hash = '#/login';
-      return;
-    }
-    if (parsed.role === 'login' && S.getSession()) {
-      location.hash = '#/user/shops';
-      return;
-    }
+    var role = parsed.role, page = parsed.page;
+    if (role === 'merchant' && page !== 'login' && !S.canRole('merchant')) { location.hash = '#/merchant/login'; return; }
+    if (role === 'admin' && page !== 'login' && !S.canRole('admin')) { location.hash = '#/admin/login'; return; }
+    if (role === 'merchant' && page === 'login' && S.canRole('merchant')) { location.hash = '#/merchant/home'; return; }
+    if (role === 'admin' && page === 'login' && S.canRole('admin')) { location.hash = '#/admin/home'; return; }
+    if (role === 'user' && !S.getSession()) { location.hash = '#/login'; return; }
+    if (role === 'login' && S.getSession()) { location.hash = '#/user/shops'; return; }
     App.params = parsed.params;
     var view = (window.Views[parsed.role] || {})[parsed.page];
     var res;
@@ -489,6 +495,30 @@
           navigate('#/login');
         });
         break;
+
+      /* 商家 / 后台密码登录 */
+      case 'merchant-login': {
+        if ((App.ui.merchantPass || '') !== PASSWORDS.merchant) { toast('商家密码错误'); return; }
+        S.setRoleAuth('merchant');
+        App.ui.merchantPass = '';
+        toast('已进入商家端');
+        navigate('#/merchant/home'); break;
+      }
+      case 'admin-login': {
+        if ((App.ui.adminPass || '') !== PASSWORDS.admin) { toast('后台密码错误'); return; }
+        S.setRoleAuth('admin');
+        App.ui.adminPass = '';
+        toast('已进入管理后台');
+        navigate('#/admin/home'); break;
+      }
+      case 'exit-merchant':
+        S.clearRole('merchant');
+        toast('已退出商家端');
+        navigate(S.getSession() ? '#/user/shops' : '#/login'); break;
+      case 'exit-admin':
+        S.clearRole('admin');
+        toast('已退出管理后台');
+        navigate(S.getSession() ? '#/user/shops' : '#/login'); break;
 
       default: break;
     }

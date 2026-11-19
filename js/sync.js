@@ -30,7 +30,8 @@
         'wk_addresses': 1,
         'wk_current_shop': 1,
         'wk_current_location': 1,
-        'wk_session': 1
+        'wk_session': 1,
+        'wk_role_auth': 1
     };
 
     function isSyncedKey(k) {

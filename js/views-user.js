@@ -281,9 +281,7 @@
       '<a class="list-row" href="tel:' + E(phone) + '"><span class="lr-icon">📞</span><span class="flex1">联系商家</span><span class="tiny muted">' + E(phone) + '</span><span class="arrow">›</span></a>' +
       '<div class="list-row" data-action="go" data-href="#/user/location"><span class="lr-icon">🧭</span><span class="flex1">手动设置位置</span><span class="arrow">›</span></div>' +
       '</div>';
-    h += '<div class="card"><div class="card-title">其他入口</div>' +
-      '<div class="list-row" data-action="switch-role" data-role="merchant"><span class="lr-icon">🍳</span><span class="flex1">进入商家端</span><span class="tiny muted">商家专用</span><span class="arrow">›</span></div>' +
-      '<div class="list-row" data-action="switch-role" data-role="admin"><span class="lr-icon">📊</span><span class="flex1">进入管理后台</span><span class="tiny muted">管理员专用</span><span class="arrow">›</span></div>' +
+    h += '<div class="card"><div class="card-title">其他</div>' +
       '<div class="list-row" data-action="reset-data"><span class="lr-icon">♻️</span><span class="flex1">重置演示数据</span><span class="arrow">›</span></div>' +
       '<div class="list-row" data-action="logout"><span class="lr-icon">🚪</span><span class="flex1">退出登录</span><span class="arrow">›</span></div></div>';
     h += '<div style="text-align:center;margin-top:18px;font-size:20px;opacity:.45">校园外卖平台 · v1.0 Web</div>';
@@ -403,7 +401,8 @@
         '<div class="btn btn-block" data-action="login">进入校园外卖</div>' +
         '<div class="tiny muted login-tip">登录后可在「我的 → 个人资料」随时修改昵称</div>' +
         '</div>' +
-        '<div class="login-foot">同一链接多人使用，云端数据实时同步<br>登录后可在顶部切换商家端 / 管理后台</div>' +
+        '<div class="login-foot">同一链接多人使用，云端数据实时同步<br>' +
+        '<span class="link" data-action="go" data-href="#/merchant/login">商家登录</span> · <span class="link" data-action="go" data-href="#/admin/login">管理后台</span></div>' +
         '</div>';
       return U.page('登录', h, {});
     }
